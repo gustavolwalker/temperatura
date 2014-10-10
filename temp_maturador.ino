@@ -1,5 +1,6 @@
 #include <OneWire.h>
 #include <LiquidCrystal.h>
+#include <EEPROM.h>
 
 int releA = 3;
 int releB = 2;
@@ -25,18 +26,22 @@ void setup(void) {
   
   lcd.begin(16, 2);
   lcd.print("Temperatura!");
+  lcd.clear();
   
-  Serial.begin(9600);
+  tempA = EEPROM.read(releA);
+  tempB = EEPROM.read(releB);
+  
+  
+  //Serial.begin(9600);
 }
 
 void loop(void) {
-  digitalWrite(led, HIGH);
-  lcd.clear();
+  digitalWrite(led, HIGH);  
   
   //Le botoes
   valorBotao = analogRead(pinBotao);
-  lcd.setCursor(12,0);
-  lcd.print(valorBotao,1);  
+  //lcd.setCursor(12,0);
+  //lcd.print(valorBotao,1);  
 
   if(valorBotao > 100 && valorBotao < 300){
     tempA = tempA + 0.5;
@@ -81,7 +86,7 @@ void loop(void) {
   digitalWrite(releB, statusB);  
 
   //Imprime na serial
-  Serial.print(tempXA);
+  /*Serial.print(tempXA);
   Serial.print(' ');
   Serial.print(statusA);
   Serial.print(' ');
@@ -91,7 +96,7 @@ void loop(void) {
   Serial.print(' ');
   Serial.print(temp);
   Serial.print(' ');
-  Serial.println(delayB);
+  Serial.println(delayB);*/
 
   //Imprime no display
   //lcd.noDisplay();
@@ -113,10 +118,16 @@ void loop(void) {
 
   //Controle de delay para motor da geladeira
   if (delayB > 0) {
-    delayB -= 1000;
+    delayB -= 250;
   }  
+  
+  //Grava temperatura na memoria
+  EEPROM.write(releA, tempA);
+  EEPROM.write(releB, tempB);
+
+  
   digitalWrite(led, LOW);
-  delay(1000);   
+  delay(250);   
 }
 
 float getTemp(){
