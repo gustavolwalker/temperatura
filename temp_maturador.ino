@@ -5,8 +5,8 @@
 int releA = 3;
 int releB = 2;
 long delayB = 10000;
-float tempA = 19;
-float tempB = 22;
+float tempA = 18;
+float tempB = 19;
 float tempDelay = 0.5;
 int statusA = LOW;
 int statusB = LOW;
@@ -14,6 +14,8 @@ float temp;
 int led = 13;
 int pinBotao = 0;
 long valorBotao = 0;
+boolean alterouTemp = false;
+
 
 OneWire ds(10); 
 LiquidCrystal lcd(12, 11, 8, 7, 6, 5);
@@ -28,10 +30,11 @@ void setup(void) {
   lcd.print("Temperatura!");
   lcd.clear();
   
-  tempA = EEPROM.read(releA);
-  tempB = EEPROM.read(releB);
-  
-  
+  //tempA = EEPROM.read(releA);
+  tempA = (float) (readFloat(0)-10);
+  //tempB = EEPROM.read(releB);
+  tempB = (float) (readFloat(4)-10);
+
   //Serial.begin(9600);
 }
 
@@ -45,12 +48,16 @@ void loop(void) {
 
   if(valorBotao > 100 && valorBotao < 300){
     tempA = tempA + 0.5;
+    alterouTemp=true;
   }else if(valorBotao > 301 && valorBotao < 400){
-    tempA = tempA - 0.5;    
+    tempA = tempA - 0.5;
+    alterouTemp=true;
   }else if(valorBotao > 401 && valorBotao < 600){
-    tempB = tempB + 0.5;      
+    tempB = tempB + 0.5;
+    alterouTemp=true;
   }else if(valorBotao >=601 && valorBotao < 1100){
-    tempB = tempB - 0.5;    
+    tempB = tempB - 0.5;
+    alterouTemp=true;
   }
   
   //Processa temperatura
@@ -122,9 +129,13 @@ void loop(void) {
   }  
   
   //Grava temperatura na memoria
-  EEPROM.write(releA, tempA);
-  EEPROM.write(releB, tempB);
-
+  if (alterouTemp){
+    //EEPROM.write(releA, tempA);
+    writeFloat(0, (tempA+10));
+    //EEPROM.write(releB, tempB);
+    writeFloat(4, (tempB+10));
+    alterouTemp = false;
+  }
   
   digitalWrite(led, LOW);
   delay(250);   
@@ -172,3 +183,27 @@ float getTemp(){
 
   return Temperature;
 }
+
+
+float readFloat(unsigned int addr) {
+  union{
+    byte b[4];
+    float f;
+  } data;
+  for(int i = 0; i < 4; i++){
+    data.b[i] = EEPROM.read(addr+i);
+  }
+  return data.f;
+}
+
+void writeFloat(unsigned int addr, float x){
+  union {
+    byte b[4];
+    float f;
+  } data;
+  data.f = x;
+  for(int i = 0; i < 4; i++) {
+    EEPROM.write(addr+i, data.b[i]);
+  }
+}
+
