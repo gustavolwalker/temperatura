@@ -1,146 +1,193 @@
+/* 
+ Temperatura  
+ Is a temperature controller with two relay to control Heating and Cooling.Those relay are photocoupler;
+ 
+ The thermostat use 3 wire, two to power and one to signal. This use port digital 9;
+ The relay A use port digital 11.
+ The relay B use port digital 12;
+ The keyboard controls the raising and lowering of the temperature, and use port analog 0 
+ */
 #include <OneWire.h>
 #include <LiquidCrystal.h>
 #include <EEPROM.h>
 
-int releA = 3;
-int releB = 2;
+//Variaveis reles
+int releA = 11;
+int releB = 12;
 long delayB = 10000;
 float tempA = 18;
 float tempB = 19;
 float tempDelay = 0.5;
 int statusA = LOW;
 int statusB = LOW;
+//Variaveis temperatura
+int termometro = 9;
 float temp;
-int led = 13;
-int pinBotao = 0;
-long valorBotao = 0;
+//Variaveis keyboard
+int keyboard = 0;
+long valorKey = 0;
 boolean alterouTemp = false;
-
-
-OneWire ds(10); 
-LiquidCrystal lcd(12, 11, 8, 7, 6, 5);
+//Variais serial
+String inputString = "";         // a string to hold incoming data
+boolean stringComplete = false;  // whether the string is complete
+//Variaveis diversas
+int led = 13;
+long delayStart = 2000;
+//Inicializacao bibliotecas
+OneWire ds(termometro); 
+LiquidCrystal lcd(4, 3, 5, 6, 7, 8);
 
 void setup(void) {
+  lcd.begin(16, 2);
+  lcd.print("Temperatura!");
+  lcd.setCursor(0,1);
+  lcd.print(" Aguarde... ");      
+
   pinMode(releA, OUTPUT);
   pinMode(releB, OUTPUT);
   pinMode(A0, INPUT);
+  pinMode(termometro, INPUT);
   pinMode(led, OUTPUT);     
-  
-  lcd.begin(16, 2);
-  lcd.print("Temperatura!");
-  lcd.clear();
-  
-  //tempA = EEPROM.read(releA);
-  tempA = (float) (readFloat(0)-10);
-  //tempB = EEPROM.read(releB);
-  tempB = (float) (readFloat(4)-10);
 
-  //Serial.begin(9600);
+  Serial.begin(9600);
+  inputString.reserve(200);
+
+  //Debug fixa valor de A e B
+  //writeFloat(2, (10));
+  //writeFloat(6, (11));
+  //releA
+  tempA = (float) (readFloat(2)-10);
+  //releB
+  tempB = (float) (readFloat(6)-10);
 }
 
 void loop(void) {
   digitalWrite(led, HIGH);  
-  
-  //Le botoes
-  valorBotao = analogRead(pinBotao);
-  //lcd.setCursor(12,0);
-  //lcd.print(valorBotao,1);  
 
-  if(valorBotao > 100 && valorBotao < 300){
-    tempA = tempA + 0.5;
-    alterouTemp=true;
-  }else if(valorBotao > 301 && valorBotao < 400){
-    tempA = tempA - 0.5;
-    alterouTemp=true;
-  }else if(valorBotao > 401 && valorBotao < 600){
-    tempB = tempB + 0.5;
-    alterouTemp=true;
-  }else if(valorBotao >=601 && valorBotao < 1100){
-    tempB = tempB - 0.5;
-    alterouTemp=true;
-  }
-  
-  //Processa temperatura
-  temp = getTemp();
-  
-  float tempXA = tempA;
-  if (statusA == HIGH){
-    tempXA += tempDelay;
-  }    
-  float tempXB = tempB;
-  if (statusB == HIGH){
-    tempXB -= tempDelay;
-  }  
-  if (temp <= tempXA){
-    statusA = HIGH;
-  } else {
-    statusA = LOW;
-  }  
-  if (temp >= tempXB){    
-    if (delayB <= 0) {
-      //Serial.println(99);
-      statusB = HIGH;
+  if (delayStart <= 0) {
+    //Le botoes
+    valorKey = analogRead(keyboard);
+    if (stringComplete) {
+      Serial.print(inputString);
+      valorKey = inputString.toInt();
+      // clear the string:
+      inputString = "";
+      stringComplete = false;
     }
-  } else {
-    //Serial.println(98);
-    if (statusB == HIGH) {
-      //Serial.println(97);
-      delayB = 240000;
+    
+    // lcd.clear();
+    lcd.setCursor(12,0); 
+    lcd.print("    ");
+    lcd.setCursor(12,0); 
+    lcd.print(valorKey,1);
+
+    if(valorKey > 700 && valorKey < 800){
+      tempA = tempA - 0.5;
+      alterouTemp=true;
     }
-    statusB = LOW;    
-  }    
-  digitalWrite(releA, statusA);
-  digitalWrite(releB, statusB);  
+    else if(valorKey > 400 && valorKey < 500){
+      tempA = tempA + 0.5;    
+      alterouTemp=true;
+    }
+    else if(valorKey > 300 && valorKey < 400){
+      tempB = tempB - 0.5;      
+      alterouTemp = true;
+    }
+    else if(valorKey > 100 && valorKey < 200){
+      tempB = tempB + 0.5;    
+      alterouTemp = true;
+    }
+    
+    //Processa temperatura
+    temp = getTemp();
 
-  //Imprime na serial
-  /*Serial.print(tempXA);
-  Serial.print(' ');
-  Serial.print(statusA);
-  Serial.print(' ');
-  Serial.print(tempXB);
-  Serial.print(' ');
-  Serial.print(statusB);
-  Serial.print(' ');
-  Serial.print(temp);
-  Serial.print(' ');
-  Serial.println(delayB);*/
+    float tempXA = tempA;
+    if (statusA == HIGH){
+      tempXA += tempDelay;
+    }    
+    float tempXB = tempB;
+    if (statusB == HIGH){
+      tempXB -= tempDelay;
+    }  
+    if (temp <= tempXA){
+      statusA = HIGH;
+    } 
+    else {
+      statusA = LOW;
+    }  
+    if (temp >= tempXB){    
+      if (delayB <= 0) {
+        statusB = HIGH;
+      }
+    } 
+    else {
+      if (statusB == HIGH) {
+        delayB = 240000;
+      }
+      statusB = LOW;    
+    }    
+    digitalWrite(releA, statusA);
+    digitalWrite(releB, statusB);  
 
-  //Imprime no display
-  //lcd.noDisplay();
-  //lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Temp:");
-  lcd.setCursor(6,0);
-  lcd.print(temp,1);
-  lcd.setCursor(0,1);
-  lcd.print(statusA,1);
-  lcd.print(statusB,1);
-  lcd.print(" ");
-  lcd.print(tempXA,1);
-  lcd.print(" ");
-  lcd.print(tempXB,1);
-  lcd.print(" ");
-  lcd.print((delayB/1000),1);
-  //lcd.display();
+    //Imprime na serial
+    /*Serial.print(tempXA);
+     Serial.print(' ');
+     Serial.print(statusA);
+     Serial.print(' ');
+     Serial.print(tempXB);
+     Serial.print(' ');
+     Serial.print(statusB);
+     Serial.print(' ');
+     Serial.print(temp);
+     Serial.print(' ');
+     Serial.println(delayB);*/
 
-  //Controle de delay para motor da geladeira
-  if (delayB > 0) {
-    delayB -= 250;
-  }  
-  
-  //Grava temperatura na memoria
-  if (alterouTemp){
-    //EEPROM.write(releA, tempA);
-    writeFloat(0, (tempA+10));
-    //EEPROM.write(releB, tempB);
-    writeFloat(4, (tempB+10));
-    alterouTemp = false;
+    //Imprime no display
+    //lcd.noDisplay();
+    //lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Temp:");
+    lcd.setCursor(6,0);
+    lcd.print(temp,1);
+    lcd.setCursor(0,1);
+    lcd.print(statusA,1);
+    lcd.print(statusB,1);
+    lcd.print(" ");
+    lcd.print(tempXA,1);
+    lcd.print(" ");
+    lcd.print(tempXB,1);
+    lcd.print(" ");
+    lcd.print((delayB/1000),1);
+    //lcd.display();
+
+    //Controle de delay para motor da geladeira
+    if (delayB > 0) {
+      delayB -= 250;
+    }  
+
+    //Grava temperatura na memoria
+    if (alterouTemp){
+      //releA
+      writeFloat(2, (tempA+10));
+      //releB
+      writeFloat(6, (tempB+10));
+      alterouTemp = false;
+    }
+  } 
+  else {
+    delayStart -= 250;
+    if (delayStart <= 0){
+      analogRead(keyboard);
+      getTemp();
+      lcd.clear();
+    }
   }
-  
+
   digitalWrite(led, LOW);
   delay(250);   
 }
 
+//Funcoes do sistema
 float getTemp(){
   byte data[12];
   byte addr[8];
@@ -184,12 +231,22 @@ float getTemp(){
   return Temperature;
 }
 
+void serialEvent() {
+  while (Serial.available()) {
+    char inChar = (char)Serial.read();
+    inputString += inChar;    
+    if (inChar == '\n'  || inChar == '\r\n'){
+      stringComplete = true;
+    }
+  }
+}
 
 float readFloat(unsigned int addr) {
   union{
     byte b[4];
     float f;
-  } data;
+  } 
+  data;
   for(int i = 0; i < 4; i++){
     data.b[i] = EEPROM.read(addr+i);
   }
@@ -200,10 +257,13 @@ void writeFloat(unsigned int addr, float x){
   union {
     byte b[4];
     float f;
-  } data;
+  } 
+  data;
   data.f = x;
   for(int i = 0; i < 4; i++) {
     EEPROM.write(addr+i, data.b[i]);
   }
 }
+
+
 
