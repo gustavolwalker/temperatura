@@ -35,7 +35,7 @@ int led = 13;
 long delayStart = 2000;
 //Inicializacao bibliotecas
 OneWire ds(termometro); 
-LiquidCrystal lcd(4, 3, 5, 6, 7, 8);
+LiquidCrystal lcd(4, 3, 8, 7, 6, 5);
 
 void setup(void) {
   lcd.begin(16, 2);
